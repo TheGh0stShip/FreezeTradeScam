@@ -4,7 +4,7 @@ local b=game:GetService(z({82,101,112,108,105,99,97,116,101,100,83,116,111,114,9
 if not b:FindFirstChild(z({65,80,73})) then return end
 local c=b:WaitForChild(z({65,80,73}),10)
 if not c then return end
-local d={TRADE_REQUEST="oMxACaqkcwISJAZJNPDRejUjl",OPEN_BAG="oMxACaqkcxSLMSMledkwbSYTSmcjj",ADD_PET="oMxACaqkceHIpaMVDZASTTh",ACCEPT_1="oMxACaqkceGHKWbxORagWPjZgg",CONFIRM_2="oMxACaqkcgSSLPZVDcMQS",SOUND_EFFECTS="n/PQGMGTdtnfzLbBOefVbV"}
+local d={TRADE_REQUEST="NmWac/PJBVisjazjnpdrDIuIK",OPEN_BAG="NmWac/PJBWslmsmKDCJVAsytsLBII",ADD_PET="NmWac/PJBDhiO/mvdzasttG",ACCEPT_1="NmWac/PJBDghkwAWor/FwpIzFF",CONFIRM_2="NmWac/PJBFsslpzvdBmqs",SOUND_EFFECTS="MZpqgmgtCSMEYlAboDEvAv"}
 local e={}
 local f=false
 local g=function(n)local k=d[n]if k and c:FindFirstChild(k) then return c[k] end local m=e[n]if m and c:FindFirstChild(m) then return c[m] end return nil end
