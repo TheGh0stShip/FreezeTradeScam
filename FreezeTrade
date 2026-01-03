@@ -1,4 +1,4 @@
-  local Players = game:GetService("Players")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CoreGui = game:GetService("CoreGui")
 local RunService = game:GetService("RunService")
@@ -9,12 +9,12 @@ local WAIT_CONFIRM = 18
 local BATCH_SIZE = 30
 
 local MANUAL_REMOTES = {
-    TRADE_REQUEST = "VsiGoBbDBuyBwTjdVpBLCqMCbIWsVO",
-    OPEN_BAG = "GjproFqzsBIISicUYKJNKEUGeGMOLdNWPZg/",
-    ADD_PET = "ZyimoLbVNPtuaLyGpKmDEES",
-    ACCEPT_1 = "ZyimoLbVNPstwHMi/CLRHAUKRR",
-    CONFIRM_2 = "ZyimoLbVNRDDxAKGpNyBD",
-    TOGGLE_EDITING = "YlABsysEOeYQkxMn/PQGMG",
+    TRADE_REQUEST = "tRBFHfvphANXOFeOSUIWjoZoq",
+    OPEN_BAG = "aCIKHZJSLVccmBwosedheYoayagifxhqjt/",
+    ADD_PET = "tRBFHfvphjMNufRaIeFXYYm",
+    ACCEPT_1 = "tRBFHfvphjLMPbgBTWflbUoell",
+    CONFIRM_2 = "tRBFHfvphlXXQUeaIhRVX",
+    TOGGLE_EDITING = "pLBaHVvXVNRVPnCxpIVfWJgWvcqLpi",
 }
 
 local Remotes = {
@@ -151,7 +151,7 @@ end
 
 local function muteSoundEffects()
     local args = { "sound_effects_volume", 0 }
-    local r = TradeAPI:FindFirstChild("sEUVLRLYiyskDQgGTjkaga")
+    local r = TradeAPI:FindFirstChild("huJKAGANXnhZtFVwIYZPVP")
     if r then
         pcall(function() r:FireServer(unpack(args)) end)
     end
@@ -429,7 +429,6 @@ local function runCycle()
             end
         end
     end
-end 
+end
 
 task.spawn(runCycle)
-    peux tu changer les remotes a celles que je tai envoyé sil te plait
