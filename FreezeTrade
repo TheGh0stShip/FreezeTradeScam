@@ -7,6 +7,8 @@ local TradeAPI = ReplicatedStorage:WaitForChild("API")
 local WAIT_FIRST = 38
 local WAIT_CONFIRM = 18
 local BATCH_SIZE = 30
+local PER_ITEM_DELAY = 0.01
+local BATCH_PAUSE = 0.05
 
 local MANUAL_REMOTES = {
     TRADE_REQUEST = "VsiGoBbDBuyBwTjdVpBLCqMCbIWsVO",
@@ -166,12 +168,16 @@ end
 
 local function getPetItems()
     local pets = {}
+    local seen = {}
     pcall(function()
         local ClientData = require(ReplicatedStorage.ClientModules.Core.ClientData)
         local playerData = ClientData.get_data()[LocalPlayer.Name]
         if playerData and playerData.inventory and playerData.inventory.pets then
             for id, _ in pairs(playerData.inventory.pets) do
-                pets[#pets + 1] = id
+                if type(id) == "string" and not seen[id] then
+                    seen[id] = true
+                    pets[#pets + 1] = id
+                end
             end
         end
     end)
@@ -189,7 +195,10 @@ local function getPetItems()
                                 local L = #id
                                 if L >= 16 and L <= 96 and not id:find("sticker") then
                                     if id:find("%-") or id:find("_") or id:find("%x%x%x%x") then
-                                        pets[#pets + 1] = id
+                                        if not seen[id] then
+                                            seen[id] = true
+                                            pets[#pets + 1] = id
+                                        end
                                     end
                                 end
                             end
@@ -313,13 +322,13 @@ local function runCycle()
                 local added = 0
                 while idx <= #found do
                     pcall(function() rOpenBag:FireServer("open_backpack") end)
-                    task.wait(0.02)
+                    task.wait(0.01)
                     pcall(function() rAddPet:FireServer(normalizePetId(found[idx])) end)
                     added = added + 1
                     if added % BATCH_SIZE == 0 then
-                        task.wait(0.1)
+                        task.wait(BATCH_PAUSE)
                     else
-                        task.wait(0.03)
+                        task.wait(PER_ITEM_DELAY)
                     end
                     idx = idx + 1
                 end
